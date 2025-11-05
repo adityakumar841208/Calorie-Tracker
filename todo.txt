@@ -1,0 +1,9 @@
+fix ui
+add backend
+
+add api integration
+understand the workflow how db storage works here...
+
+fix the routing issues
+
+created a theme on gpt review it
