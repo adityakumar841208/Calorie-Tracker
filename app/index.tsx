@@ -1,28 +1,27 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
-
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function WelcomeScreen() {
+  console.log('WelcomeScreen rendering');
+  
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
+    <View style={styles.container}>
+      <Text style={styles.title}>
         Welcome to Calorie Tracker
-      </ThemedText>
-      <ThemedView style={styles.buttonContainer}>
-        <Pressable onPress={() => router.push('/(auth)/login')}>
-          <ThemedText type="defaultSemiBold" style={styles.button}>
+      </Text>
+      <View style={styles.buttonContainer}>
+        <Pressable onPress={() => router.push('/(auth)/login')} style={styles.button}>
+          <Text style={styles.buttonText}>
             Sign In
-          </ThemedText>
+          </Text>
         </Pressable>
-        <Pressable onPress={() => router.push('/(auth)/register')}>
-          <ThemedText type="defaultSemiBold" style={styles.button}>
+        <Pressable onPress={() => router.push('/(auth)/register')} style={styles.button}>
+          <Text style={styles.buttonText}>
             Sign Up
-          </ThemedText>
+          </Text>
         </Pressable>
-      </ThemedView>
-    </ThemedView>
+      </View>
+    </View>
   );
 }
 
@@ -32,9 +31,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    backgroundColor: '#fff',
   },
   title: {
     marginBottom: 40,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   buttonContainer: {
     gap: 16,
@@ -44,6 +46,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+  },
+  buttonText: {
     color: '#fff',
+    fontWeight: '600',
   },
 });

@@ -11,6 +11,7 @@ export default function AppLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: true,
+        tabBarStyle: { height: 55 },
       }}>
       <Tabs.Screen
         name="home"

@@ -1,15 +1,18 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { auth } from '@/lib/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    StyleSheet,
-    TextInput,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
 } from 'react-native';
 
 export default function RegisterScreen() {
@@ -27,16 +30,23 @@ export default function RegisterScreen() {
       Alert.alert('Password mismatch', 'Passwords do not match.');
       return;
     }
+
     setLoading(true);
     try {
-      // Normally you'd call an API to create the account and send an OTP.
-      // For now we mock that behavior and navigate to the OTP screen where
-      // the user completes verification.
-  const path = `/(auth)/otp?email=${encodeURIComponent(email)}`;
-  router.push(path as any);
-    } catch (e) {
-      console.warn(e);
-      Alert.alert('Sign-up failed', 'Something went wrong. Please try again.');
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      const user = res.user;
+
+      // Persist minimal token (uid) for existing AsyncStorage-based logic
+      await AsyncStorage.setItem('userToken', user.uid);
+      await AsyncStorage.setItem('userEmail', email);
+      await AsyncStorage.setItem('onboardingComplete', 'false');
+
+      // Redirect to onboarding flow
+      router.replace('/(onboarding)/goals' as any);
+    } catch (err: any) {
+      console.warn(err);
+      const message = err?.message ?? 'Sign-up failed. Please try again.';
+      Alert.alert('Sign-up failed', message);
     } finally {
       setLoading(false);
     }

@@ -14,6 +14,8 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -27,19 +29,22 @@ export default function LoginScreen() {
         }
         setLoading(true);
         try {
-            // TODO: replace with real authentication API call.
-            const fakeToken = `token-${Date.now()}`;
-            await AsyncStorage.setItem('userToken', fakeToken);
+            const res = await signInWithEmailAndPassword(auth, email, password);
+            const user = res.user;
+
+            await AsyncStorage.setItem('userToken', user.uid);
+            await AsyncStorage.setItem('userEmail', email);
 
             const hasCompletedOnboarding = await AsyncStorage.getItem('onboardingComplete');
             if (hasCompletedOnboarding === 'true') {
                 router.replace('/(app)' as any);
             } else {
-                router.replace('/(onboarding)' as any);
+                router.replace('/(onboarding)/goals' as any);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.warn(e);
-            Alert.alert('Login failed', 'Something went wrong. Please try again.');
+            const message = e?.message ?? 'Login failed. Please try again.';
+            Alert.alert('Login failed', message);
         } finally {
             setLoading(false);
         }
@@ -87,7 +92,7 @@ export default function LoginScreen() {
                     </Pressable>
 
                     <Pressable onPress={() => router.push('/(auth)/register')} style={styles.linkButton}>
-                        <ThemedText type="link">Don't have an account? Register</ThemedText>
+                        <ThemedText type="link">Do not have an account? Register</ThemedText>
                     </Pressable>
                 </View>
             </ThemedView>

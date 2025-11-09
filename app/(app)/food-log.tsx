@@ -2,10 +2,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useColorScheme,
+} from 'react-native';
 
 const MEAL_TYPES = [
-  { id: 'breakfast', name: 'Breakfast', icon: 'sun.max.fill' },
+  { id: 'breakfast', name: 'Breakfast', icon: 'sunrise.fill' },
   { id: 'lunch', name: 'Lunch', icon: 'sun.max.fill' },
   { id: 'dinner', name: 'Dinner', icon: 'moon.fill' },
   { id: 'snack', name: 'Snack', icon: 'leaf.fill' },
@@ -22,150 +28,221 @@ const MOCK_FOODS = [
 export default function FoodLogScreen() {
   const [selectedMeal, setSelectedMeal] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const theme = useColorScheme();
+  const isDark = theme === 'dark';
 
-  const filteredFoods = MOCK_FOODS.filter(food =>
+  const colors = {
+    background: isDark ? '#0B0B0C' : '#F8F9FB',
+    card: isDark ? '#1C1C1E' : '#FFFFFF',
+    border: isDark ? '#2C2C2E' : '#E5E5E7',
+    textPrimary: isDark ? '#F3F3F3' : '#111',
+    textSecondary: isDark ? '#A5A5A7' : '#666',
+    accent: '#007AFF',
+    shadow: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.08)',
+  };
+
+  const filteredFoods = MOCK_FOODS.filter((food) =>
     food.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="title">Log Food</ThemedText>
-      </ThemedView>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <ThemedView style={[styles.header]}>
+          <ThemedText type="title" style={[styles.title, { color: colors.textPrimary }]}>
+            Log Food
+          </ThemedText>
+        </ThemedView>
 
-      {/* Meal Type Selection */}
-      <ThemedView style={styles.mealTypes}>
-        {MEAL_TYPES.map(meal => (
-          <Pressable
-            key={meal.id}
-            style={[
-              styles.mealTypeButton,
-              selectedMeal === meal.id && styles.mealTypeButtonSelected,
-            ]}
-            onPress={() => setSelectedMeal(meal.id)}
-          >
-            <IconSymbol
-              name={meal.icon}
-              size={24}
-              color={selectedMeal === meal.id ? '#fff' : '#007AFF'}
-            />
-            <ThemedText
+        {/* Meal Type Selection */}
+        <ThemedView style={styles.mealTypes}>
+          {MEAL_TYPES.map((meal) => {
+            const selected = selectedMeal === meal.id;
+            return (
+              <Pressable
+                key={meal.id}
+                onPress={() => setSelectedMeal(meal.id)}
+                style={[
+                  styles.mealTypeButton,
+                  {
+                    backgroundColor: selected ? colors.accent : colors.card,
+                    borderColor: selected ? colors.accent : colors.border,
+                    shadowColor: colors.shadow,
+                  },
+                ]}
+              >
+                <IconSymbol
+                  name={meal.icon}
+                  size={26}
+                  color={selected ? '#FFF' : colors.accent}
+                />
+                <ThemedText
+                  style={[
+                    styles.mealTypeText,
+                    { color: selected ? '#FFF' : colors.textPrimary },
+                  ]}
+                >
+                  {meal.name}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </ThemedView>
+
+        {/* Search Bar */}
+        <ThemedView
+          style={[
+            styles.searchContainer,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: colors.shadow,
+            },
+          ]}
+        >
+          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.textPrimary }]}
+            placeholder="Search foods..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={colors.textSecondary}
+          />
+        </ThemedView>
+
+        {/* Food List */}
+        <ThemedView style={[styles.foodList, { backgroundColor: colors.card }]}>
+          {filteredFoods.map((food, index) => (
+            <Pressable
+              key={food.id}
               style={[
-                styles.mealTypeText,
-                selectedMeal === meal.id && styles.mealTypeTextSelected,
+                styles.foodItem,
+                {
+                  borderBottomColor:
+                    index !== filteredFoods.length - 1 ? colors.border : 'transparent',
+                },
               ]}
             >
-              {meal.name}
-            </ThemedText>
+              <ThemedView>
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={{ color: colors.textPrimary }}
+                >
+                  {food.name}
+                </ThemedText>
+                <ThemedText style={[styles.servingText, { color: colors.textSecondary }]}>
+                  {food.serving}
+                </ThemedText>
+              </ThemedView>
+
+              <ThemedView style={styles.calorieContainer}>
+                <ThemedText style={{ color: colors.textPrimary }}>
+                  {food.calories}
+                </ThemedText>
+                <ThemedText style={[styles.calorieLabel, { color: colors.textSecondary }]}>
+                  cal
+                </ThemedText>
+              </ThemedView>
+            </Pressable>
+          ))}
+        </ThemedView>
+
+        {/* Quick Add Button */}
+        <ThemedView style={styles.quickAddContainer}>
+          <Pressable style={[styles.quickAddButton, { backgroundColor: colors.accent }]}>
+            <IconSymbol name="plus.circle.fill" size={24} color="#fff" />
+            <ThemedText style={styles.quickAddText}>Quick Add Custom Food</ThemedText>
           </Pressable>
-        ))}
-      </ThemedView>
-
-      {/* Search Bar */}
-      <ThemedView style={styles.searchContainer}>
-        <IconSymbol name="magnifyingglass" size={20} color="#666" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search foods..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor="#666"
-        />
-      </ThemedView>
-
-      {/* Food List */}
-      <ThemedView style={styles.foodList}>
-        {filteredFoods.map(food => (
-          <Pressable key={food.id} style={styles.foodItem}>
-            <ThemedView>
-              <ThemedText type="defaultSemiBold">{food.name}</ThemedText>
-              <ThemedText style={styles.servingText}>{food.serving}</ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.calorieContainer}>
-              <ThemedText>{food.calories}</ThemedText>
-              <ThemedText style={styles.calorieLabel}>cal</ThemedText>
-            </ThemedView>
-          </Pressable>
-        ))}
-      </ThemedView>
-
-      {/* Quick Add Button */}
-      <ThemedView style={styles.quickAddContainer}>
-        <Pressable style={styles.quickAddButton}>
-          <IconSymbol name="plus.circle.fill" size={24} color="#fff" />
-          <ThemedText style={styles.quickAddText}>Quick Add Custom Food</ThemedText>
-        </Pressable>
-      </ThemedView>
-    </ScrollView>
+        </ThemedView>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  scroll: { flex: 1 },
+
   header: {
-    padding: 16,
+    paddingHorizontal: 22,
+    paddingTop: 50,
+    paddingBottom: 10,
   },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+  },
+
   mealTypes: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
   },
   mealTypeButton: {
+    flex: 1,
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  mealTypeButtonSelected: {
-    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginHorizontal: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 2,
   },
   mealTypeText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#007AFF',
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '600',
   },
-  mealTypeTextSelected: {
-    color: '#fff',
-  },
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 10,
     paddingHorizontal: 16,
-    height: 44,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    height: 46,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#eee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
   },
+
   foodList: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderRadius: 14,
+    marginHorizontal: 16,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   foodItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   servingText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
   },
   calorieContainer: {
     flexDirection: 'row',
@@ -174,23 +251,24 @@ const styles = StyleSheet.create({
   },
   calorieLabel: {
     fontSize: 12,
-    color: '#666',
   },
+
   quickAddContainer: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   quickAddButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
+    elevation: 3,
   },
   quickAddText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
