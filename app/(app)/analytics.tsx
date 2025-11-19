@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BAR_WIDTH = (SCREEN_WIDTH - 80) / 7 - 4;
+const BAR_WIDTH = Math.max((SCREEN_WIDTH - 80) / 7 - 4, 30); // Minimum 30px width
 
 export default function AnalyticsScreen() {
   const { user, profile } = useUser();

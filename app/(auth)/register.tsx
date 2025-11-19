@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
 } from 'react-native';
@@ -57,13 +58,18 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <ThemedView style={styles.container}>
-        <ThemedText type="title" className="mb-8">Create Account</ThemedText>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <ThemedView style={styles.innerContainer}>
+          <ThemedText type="title" style={styles.title}>Create Account</ThemedText>
 
-        <ThemedView style={styles.inputContainer}>
+          <ThemedView style={styles.inputContainer}>
           <TextInput
             placeholder="Email"
             value={email}
@@ -105,7 +111,8 @@ export default function RegisterScreen() {
             <ThemedText type="link">Already have an account? Login</ThemedText>
           </Pressable>
         </ThemedView>
-      </ThemedView>
+        </ThemedView>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -113,9 +120,17 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
+  },
+  innerContainer: {
+    alignItems: 'center',
+  },
+  title: {
+    marginBottom: 32,
   },
   inputContainer: {
     width: '100%',

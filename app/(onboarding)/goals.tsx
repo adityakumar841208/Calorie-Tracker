@@ -1,205 +1,152 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, useColorScheme, View, Text } from 'react-native';
 import { router } from 'expo-router';
 import { Equal, TrendingDown, TrendingUp } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useColorScheme } from 'react-native';
+import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
 
 const GOALS = [
-  {
-    id: 'weight-loss',
-    title: 'Weight Loss',
-    description: 'Reduce body weight through caloric deficit',
-    Icon: TrendingDown,
-  },
-  {
-    id: 'weight-gain',
-    title: 'Weight Gain',
-    description: 'Build muscle and increase body weight',
-    Icon: TrendingUp,
-  },
-  {
-    id: 'maintain',
-    title: 'Maintain Weight',
-    description: 'Keep current weight while staying healthy',
-    Icon: Equal,
-  },
+  { id: 'weight-loss', title: 'Weight Loss', description: 'Lose fat with a gentle calorie deficit', Icon: TrendingDown },
+  { id: 'weight-gain', title: 'Weight Gain', description: 'Build muscle & gain strength', Icon: TrendingUp },
+  { id: 'maintain', title: 'Maintain', description: 'Keep your current weight with balance', Icon: Equal },
 ];
 
-export default function GoalsScreen() {
-  const [selectedGoal, setSelectedGoal] = useState('');
-  const theme = useColorScheme();
-  const isDark = theme === 'dark';
+export default function ModernGoalsScreen() {
+  const [selected, setSelected] = useState('');
+  const scheme = useColorScheme();
+  const dark = scheme === 'dark';
 
   const colors = {
-    background: isDark ? '#0B0B0C' : '#F8F9FB',
-    card: isDark ? '#1A1A1D' : '#FFFFFF',
-    border: isDark ? '#2C2C2F' : '#E5E5E7',
-    accent: '#007AFF',
-    textPrimary: isDark ? '#F3F3F3' : '#111',
-    textSecondary: isDark ? '#A5A5A7' : '#555',
-    shadow: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.08)',
+    bg: dark ? '#0B0F14' : '#F7F9FB',
+    card: dark ? '#0F1720' : '#FFFFFF',
+    muted: dark ? '#8B98A8' : '#6B7280',
+    accent: '#5B21B6',
+    accent2: '#06B6D4',
+    border: dark ? 'rgba(255,255,255,0.04)' : 'rgba(2,6,23,0.04)'
   };
 
-  const handleContinue = () => {
-    if (selectedGoal) {
-      router.push({
-        pathname: '/(onboarding)/target',
-        params: { goal: selectedGoal },
-      });
-    }
-  };
+  function onContinue() {
+    if (!selected) return;
+    router.push({ pathname: '/(onboarding)/target', params: { goal: selected } });
+  }
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <ThemedText
-          type="title"
-          style={[styles.headerTitle, { color: colors.textPrimary }]}
-        >
-          Select Your Goal
-        </ThemedText>
+    <ThemedView style={[styles.root, { backgroundColor: colors.bg }]}> 
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <ThemedText type="title" style={[styles.title, { color: dark ? '#F8FAFC' : '#071025' }]}>Select your goal</ThemedText>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>Pick one to personalise your plan.</Text>
+        </View>
 
-        <ThemedView style={styles.goalsContainer}>
-          {GOALS.map((goal) => {
-            const isSelected = selectedGoal === goal.id;
+        <View style={styles.grid}>
+          {GOALS.map((g) => {
+            const active = selected === g.id;
+            const Icon = g.Icon;
             return (
               <Pressable
-                key={goal.id}
-                onPress={() => setSelectedGoal(goal.id)}
-                style={[
-                  styles.goalCard,
+                key={g.id}
+                onPress={() => setSelected(g.id)}
+                style={({ pressed }) => [
+                  styles.card,
                   {
-                    backgroundColor: isSelected ? colors.accent : colors.card,
-                    borderColor: isSelected ? colors.accent : colors.border,
-                    shadowColor: colors.shadow,
-                  },
+                    backgroundColor: active ? `linear-gradient(90deg, ${colors.accent}, ${colors.accent2})` : colors.card,
+                    borderColor: active ? 'transparent' : colors.border,
+                    transform: [{ scale: pressed ? 0.985 : 1 }]
+                  }
                 ]}
+                android_ripple={{ color: 'rgba(0,0,0,0.04)' }}
               >
-                <goal.Icon
-                  size={40}
-                  color={isSelected ? '#FFF' : colors.accent}
-                  strokeWidth={2.5}
-                />
-                <ThemedText
-                  type="subtitle"
-                  style={[
-                    styles.goalTitle,
-                    { color: isSelected ? '#FFF' : colors.textPrimary },
-                  ]}
-                >
-                  {goal.title}
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.goalDescription,
-                    { color: isSelected ? 'rgba(255,255,255,0.85)' : colors.textSecondary },
-                  ]}
-                >
-                  {goal.description}
-                </ThemedText>
+                <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                  <Icon size={22} color={active ? '#FFF' : colors.accent} strokeWidth={2.2} />
+                </View>
+
+                <ThemedText type="subtitle" style={[styles.cardTitle, { color: active ? '#FFF' : dark ? '#E6EEF8' : '#071025' }]}>{g.title}</ThemedText>
+                <Text style={[styles.cardText, { color: active ? 'rgba(255,255,255,0.9)' : colors.muted }]}>{g.description}</Text>
+
+                {active && <View style={styles.check} />}
               </Pressable>
             );
           })}
-        </ThemedView>
+        </View>
+
       </ScrollView>
 
-      <ThemedView
-        style={[
-          styles.footer,
-          {
-            backgroundColor: isDark ? '#101011' : '#FFF',
-            borderTopColor: colors.border,
-            shadowColor: colors.shadow,
-          },
-        ]}
-      >
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: dark ? '#071225' : '#FFFFFF' }]}> 
         <Pressable
-          onPress={handleContinue}
-          style={[
-            styles.button,
-            {
-              backgroundColor: selectedGoal ? colors.accent : colors.border,
-            },
+          onPress={onContinue}
+          style={({ pressed }) => [
+            styles.cta,
+            { opacity: selected ? 1 : 0.6, transform: [{ scale: pressed ? 0.995 : 1 }] }
           ]}
-          disabled={!selectedGoal}
+          disabled={!selected}
         >
-          <ThemedText style={styles.buttonText}>Continue</ThemedText>
+          <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 60,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  goalsContainer: {
-    gap: 20,
-  },
-  goalCard: {
-    padding: 22,
+  root: { flex: 1 },
+  container: { paddingHorizontal: 22, paddingTop: 30},
+  header: { marginBottom: 20, alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 6, textAlign: 'center' },
+  subtitle: { fontSize: 14, textAlign: 'center', opacity: 0.9 },
+
+  grid: { gap: 14 },
+  card: {
+    padding: 0,
     borderRadius: 14,
-    borderWidth: 2,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-    transitionDuration: '200ms',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 18,
+    elevation: 6,
+    minHeight: 109,
   },
-  goalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  goalDescription: {
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    borderTopWidth: 1,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  button: {
-    height: 52,
+  iconWrap: {
+    width: 56,
+    height: 32,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(11,18,32,0.04)'
   },
-  buttonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  iconWrapActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
+  cardText: { fontSize: 13, textAlign: 'center', lineHeight: 18, maxWidth: 320 },
+
+  check: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981'
   },
+
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 12,
+    borderTopWidth: 1,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+  },
+  cta: {
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#5B21B6',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  ctaText: { color: '#FFF', fontWeight: '700', fontSize: 16, paddingHorizontal: 5 }
 });

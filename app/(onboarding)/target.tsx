@@ -1,266 +1,164 @@
-import { ThemedText } from '@/components/themed-text';
+import React, { useState } from 'react';
+import { View, TextInput, Pressable, Text, ScrollView, StyleSheet, ActivityIndicator, useColorScheme, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
+import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '@/lib/firebase';
 import { createUserProfile } from '@/services/userService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
 
-const calculateRecommendedCalories = (goal: string) => {
+type GoalParam = { goal?: string };
+
+const calculateRecommendedCalories = (goal?: string): number => {
   switch (goal) {
-    case 'weight-loss':
-      return 1500;
-    case 'weight-gain':
-      return 3000;
-    case 'maintain':
-    default:
-      return 2000;
+    case 'weight-loss': return 1500;
+    case 'weight-gain': return 3000;
+    default: return 2000;
   }
 };
 
-const mapGoalToFirestore = (goal: string): 'lose' | 'maintain' | 'gain' => {
+const mapGoalToFirestore = (goal?: string): 'lose' | 'maintain' | 'gain' => {
   switch (goal) {
-    case 'weight-loss':
-      return 'lose';
-    case 'weight-gain':
-      return 'gain';
-    case 'maintain':
-    default:
-      return 'maintain';
+    case 'weight-loss': return 'lose';
+    case 'weight-gain': return 'gain';
+    default: return 'maintain';
   }
 };
 
-export default function TargetScreen() {
-  const { goal } = useLocalSearchParams<{ goal: string }>();
-  const [calories, setCalories] = useState(calculateRecommendedCalories(goal).toString());
-  const [loading, setLoading] = useState(false);
-  const theme = useColorScheme();
-  const isDark = theme === 'dark';
+const factForGoal = (goal?: string): string => {
+  switch (goal) {
+    case 'weight-loss':
+      return 'Small, consistent calorie deficits (250–500 kcal/day) are more sustainable and maintain muscle when combined with resistance training.';
+    case 'weight-gain':
+      return 'A moderate calorie surplus plus progressive resistance training helps you gain muscle without excessive fat gain.';
+    case 'maintain':
+      return 'Focusing on protein, sleep and activity helps you preserve lean mass while maintaining weight.';
+    default:
+      return 'Choose a target to personalise your tracking — consistency matters more than perfection.';
+  }
+};
+
+export default function TargetScreen(): JSX.Element {
+  const { goal } = useLocalSearchParams<GoalParam>();
+  const scheme = useColorScheme();
+  const dark = scheme === 'dark';
+
+  // Prefill with a reasonable default but allow user to change
+  const [calories, setCalories] = useState<string>(String(calculateRecommendedCalories(goal)));
+  const [loading, setLoading] = useState<boolean>(false);
 
   const colors = {
-    background: isDark ? '#0B0B0C' : '#F8F9FB',
-    card: isDark ? '#1C1C1E' : '#FFFFFF',
-    border: isDark ? '#2C2C2E' : '#E5E5E7',
-    textPrimary: isDark ? '#F3F3F3' : '#111',
-    textSecondary: isDark ? '#A5A5A7' : '#666',
-    accent: '#007AFF',
-    shadow: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.08)',
-  };
+    bg: dark ? '#07080A' : '#F6F8FB',
+    card: dark ? '#0F1722' : '#FFFFFF',
+    muted: dark ? '#9AA4B2' : '#6B7280',
+    accentFrom: '#7C3AED',
+    accentTo: '#06B6D4',
+    border: dark ? 'rgba(255,255,255,0.04)' : 'rgba(2,6,23,0.06)'
+  } as const;
 
-  const handleComplete = async () => {
+  const handleComplete = async (): Promise<void> => {
     if (!auth.currentUser) {
-      Alert.alert('Error', 'You must be logged in to complete onboarding.');
+      Alert.alert('Not signed in', 'You must be logged in to finish onboarding.');
+      return;
+    }
+
+    const parsed = parseInt(calories || '0', 10);
+    if (!parsed || parsed < 800 || parsed > 10000) {
+      Alert.alert('Invalid value', 'Please enter a realistic calorie number (800–10000).');
       return;
     }
 
     setLoading(true);
     try {
+      // auth.authStateReady may be a helper in your project — guard if not present
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await (auth as any).authStateReady?.();
+
       const firestoreGoal = mapGoalToFirestore(goal);
-      const targetCalories = parseInt(calories, 10);
+      await createUserProfile(auth.currentUser.uid, firestoreGoal, parsed);
 
-      console.log('Saving profile:', { uid: auth.currentUser.uid, firestoreGoal, targetCalories });
-
-      // Wait for auth state to be fully ready
-      await auth.authStateReady();
-      
-      // Save to MongoDB via your backend API
-      await createUserProfile(auth.currentUser.uid, firestoreGoal, targetCalories);
-      
-      console.log('Profile saved successfully to MongoDB');
-
-      // Save to AsyncStorage (wrapped in try-catch to handle separately)
-      try {
-        await AsyncStorage.setItem('userGoal', goal);
-        await AsyncStorage.setItem('targetCalories', calories);
-        await AsyncStorage.setItem('onboardingComplete', 'true');
-        console.log('AsyncStorage saved successfully');
-      } catch (storageError: any) {
-        console.error('AsyncStorage error (non-critical):', storageError);
-        // Continue anyway as profile is already saved to MongoDB
-      }
-      
-      console.log('Navigating to home...');
+      await AsyncStorage.setItem('userGoal', goal ?? 'maintain');
+      await AsyncStorage.setItem('targetCalories', String(parsed));
+      await AsyncStorage.setItem('onboardingComplete', 'true');
 
       router.replace('/(app)/home');
-    } catch (error: any) {
-      console.error('Error saving onboarding data:', error);
-      console.error('Error details:', error.message, error.code);
-      
-      // Determine the actual error source
-      let errorMessage = 'Please try again.';
-      
-      if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
-        errorMessage = 'Cannot connect to server. Make sure the backend is running on port 3000.';
-      } else if (error.message?.includes('permission') || error.code?.includes('permission')) {
-        errorMessage = 'Authentication issue. Please try logging out and back in.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Error', `Failed to save your profile: ${errorMessage}`);
+    } catch (err: unknown) {
+      console.warn('Failed to save target', err);
+      Alert.alert('Save failed', (err as Error)?.message ?? 'Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <ThemedText
-          type="title"
-          style={[styles.title, { color: colors.textPrimary }]}
-        >
-          Set Your Daily Target
-        </ThemedText>
+    <ThemedView style={[styles.root, { backgroundColor: colors.bg }]}> 
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-        <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-          <ThemedText style={[styles.description, { color: colors.textSecondary }]}>
-            Based on your goal to{' '}
-            <ThemedText style={{ color: colors.accent, fontWeight: '600' }}>
-              {goal.replace('-', ' ')}
-            </ThemedText>
-            , we recommend:
-          </ThemedText>
+        <View style={styles.header}>
+          <ThemedText type="title" style={[styles.title, { color: dark ? '#F8FAFC' : '#071025' }]}>Set your daily target</ThemedText>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>Personalise your plan for {goal ? goal.replace('-', ' ') : 'your goal'}.</Text>
+        </View>
 
-          <ThemedView style={styles.inputContainer}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}> 
+
+          <View style={styles.inputRow}>
             <TextInput
               value={calories}
-              onChangeText={setCalories}
+              onChangeText={(t) => setCalories(t.replace(/[^0-9]/g, ''))}
               keyboardType="number-pad"
-              style={[
-                styles.calorieInput,
-                { color: colors.textPrimary, borderBottomColor: colors.accent },
-              ]}
-              maxLength={4}
-              placeholder="0"
-              placeholderTextColor={colors.textSecondary}
+              style={[styles.input, { color: dark ? '#E6EEF8' : '#071025', borderColor: colors.border }]}
+              placeholder="Enter calories"
+              placeholderTextColor={colors.muted}
+              maxLength={5}
+              accessible
+              accessibilityLabel="Target calories per day"
             />
-            <ThemedText style={[styles.calorieUnit, { color: colors.textSecondary }]}>
-              calories/day
-            </ThemedText>
-          </ThemedView>
+            <Text style={[styles.unit, { color: colors.muted }]}>cal/day</Text>
+          </View>
 
-          <ThemedText style={[styles.hint, { color: colors.textSecondary }]}>
-            You can adjust this later in settings based on your progress.
-          </ThemedText>
-        </ThemedView>
+          <View style={styles.factBox}>
+            <Text style={[styles.factTitle, { color: dark ? '#F8FAFC' : '#071025' }]}>Quick fact</Text>
+            <Text style={[styles.factText, { color: colors.muted }]}>{factForGoal(goal)}</Text>
+          </View>
+
+        </View>
+
       </ScrollView>
 
-      {/* Sticky Footer */}
-      <ThemedView
-        style={[
-          styles.footer,
-          {
-            backgroundColor: isDark ? '#101011' : '#FFF',
-            borderTopColor: colors.border,
-            shadowColor: colors.shadow,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={handleComplete}
-          style={[
-            styles.button,
-            { backgroundColor: calories ? colors.accent : colors.border },
-          ]}
-          disabled={!calories || loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <ThemedText style={styles.buttonText}>Start Tracking</ThemedText>
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: dark ? '#071225' : '#FFF' }]}> 
+        <Pressable onPress={handleComplete} disabled={!calories || loading} style={({ pressed }) => [styles.cta, { opacity: !calories ? 0.6 : 1, transform: [{ scale: pressed ? 0.995 : 1 }] }]}>
+          {loading ? <ActivityIndicator color="#fff" /> : (
+            <LinearGradient colors={[colors.accentFrom, colors.accentTo]} start={[0,0]} end={[1,1]} style={styles.ctaGradient}>
+              <Text style={styles.ctaText}>Start Tracking</Text>
+            </LinearGradient>
           )}
         </Pressable>
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 60,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  card: {
-    width: '100%',
-    borderRadius: 16,
-    paddingVertical: 30,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 24,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  description: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  calorieInput: {
-    fontSize: 48,
-    fontWeight: '700',
-    textAlign: 'center',
-    width: 160,
-    borderBottomWidth: 3,
-    paddingVertical: 6,
-  },
-  calorieUnit: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  hint: {
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    borderTopWidth: 1,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  button: {
-    height: 52,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  root: { flex: 1 },
+  container: { paddingHorizontal: 22, paddingTop: 48, alignItems: 'center' },
+  header: { marginBottom: 16, alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 6, textAlign: 'center' },
+  subtitle: { fontSize: 13, opacity: 0.95 },
+
+  card: { width: '100%', borderRadius: 16, padding: 20, alignItems: 'center', gap: 16, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: {width:0,height:6}, shadowRadius: 18, elevation: 6 },
+
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginTop: 6 },
+  input: { fontSize: 40, fontWeight: '800', width: 160, borderBottomWidth: 2, paddingVertical: 6, textAlign: 'center' },
+  unit: { fontSize: 14, marginBottom: 8 },
+
+  factBox: { marginTop: 8, width: '100%', backgroundColor: 'transparent', padding: 12, borderRadius: 12 },
+  factTitle: { fontSize: 13, fontWeight: '700', marginBottom: 6 },
+  factText: { fontSize: 14, lineHeight: 20 },
+
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 18, borderTopWidth: 1, shadowOffset: { width:0, height:-6 }, shadowOpacity: 0.06, shadowRadius: 12 },
+  cta: { height: 38, borderRadius: 12, overflow: 'hidden' },
+  ctaGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  ctaText: { color: '#FFF', fontWeight: '800', fontSize: 16 }
 });

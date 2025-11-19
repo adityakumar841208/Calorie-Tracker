@@ -53,7 +53,11 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <ThemedView style={styles.header}>
         <View>

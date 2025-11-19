@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { FirebaseApp, initializeApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import { Auth, getAuth, sendPasswordResetEmail} from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 
 // Firebase configuration from app.json extra field
@@ -23,6 +23,16 @@ const auth: Auth = getAuth(app);
 // Note: Not actively used, so Firestore permissions shouldn't affect your app
 const db: Firestore = getFirestore(app);
 
-export { auth, db };
+// forget password
+const forgetPassword = async (email: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    throw error;
+  }
+};
+
+export { auth, db, forgetPassword };
 export default app;
 

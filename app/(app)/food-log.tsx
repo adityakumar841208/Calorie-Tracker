@@ -71,7 +71,7 @@ export default function FoodLogScreen() {
     }
   };
 
-  const handleDeleteFood = async (itemId: string) => {
+  const handleDeleteFood = async (timestamp: number) => {
     if (!user) return;
 
     Alert.alert(
@@ -84,8 +84,9 @@ export default function FoodLogScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteFood(user.uid, today, itemId);
+              await deleteFood(user.uid, today, timestamp);
               await refetch();
+              Alert.alert('Success', 'Food item deleted successfully!');
             } catch (error: any) {
               console.error('Error deleting food:', error);
               Alert.alert('Error', error.message || 'Failed to delete food.');
@@ -206,13 +207,13 @@ export default function FoodLogScreen() {
               >
                 <ThemedText style={styles.totalLabel}>Total Calories</ThemedText>
                 <ThemedText style={styles.totalValue}>
-                  {dailyLog.totalCalories} cal
+                  {dailyLog.items.reduce((sum, item) => sum + (item.calories || 0), 0)} cal
                 </ThemedText>
               </ThemedView>
 
-              {dailyLog.items.map((item) => (
+              {dailyLog.items.map((item, index) => (
                 <ThemedView
-                  key={item.id}
+                  key={`${item.timestamp}-${index}`}
                   style={[
                     styles.foodItem,
                     { backgroundColor: colors.card, borderColor: colors.border },
@@ -227,7 +228,7 @@ export default function FoodLogScreen() {
                     </ThemedText>
                   </View>
                   <Pressable
-                    onPress={() => handleDeleteFood(item.id)}
+                    onPress={() => handleDeleteFood(new Date(item.timestamp).getTime())}
                     style={styles.deleteButton}
                   >
                     <Trash2 size={20} color={colors.danger} />
