@@ -36,13 +36,16 @@ export default function RegisterScreen() {
       const res = await createUserWithEmailAndPassword(auth, email, password);
       const user = res.user;
 
-      // Persist minimal token (uid) for existing AsyncStorage-based logic
       await AsyncStorage.setItem('userToken', user.uid);
       await AsyncStorage.setItem('userEmail', email);
       await AsyncStorage.setItem('onboardingComplete', 'false');
 
-      // Redirect to onboarding flow
-      router.replace('/(onboarding)/goals' as any);
+      try {
+        router.replace('/(onboarding)/goals' as any);
+      } catch (e) {
+        Alert.alert('Navigation error', 'Could not navigate to onboarding. Please update the app or contact support.');
+        console.warn('Navigation error:', e);
+      }
     } catch (err: any) {
       console.warn(err);
       const message = err?.message ?? 'Sign-up failed. Please try again.';

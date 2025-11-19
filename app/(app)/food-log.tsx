@@ -1,33 +1,30 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useDailyLog } from '@/hooks/useDailyLog';
+import { useUser } from '@/hooks/useUser';
+import { deleteFood, getTodayDate, logFood } from '@/services/dailyLogService';
+import { Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   useColorScheme,
+  View,
 } from 'react-native';
 
-const MEAL_TYPES = [
-  { id: 'breakfast', name: 'Breakfast', icon: 'sunrise.fill' },
-  { id: 'lunch', name: 'Lunch', icon: 'sun.max.fill' },
-  { id: 'dinner', name: 'Dinner', icon: 'moon.fill' },
-  { id: 'snack', name: 'Snack', icon: 'leaf.fill' },
-];
-
-const MOCK_FOODS = [
-  { id: 1, name: 'Banana', calories: 105, serving: '1 medium' },
-  { id: 2, name: 'Chicken Breast', calories: 165, serving: '100g' },
-  { id: 3, name: 'Brown Rice', calories: 216, serving: '1 cup cooked' },
-  { id: 4, name: 'Greek Yogurt', calories: 100, serving: '100g' },
-  { id: 5, name: 'Almonds', calories: 164, serving: '28g' },
-];
-
 export default function FoodLogScreen() {
-  const [selectedMeal, setSelectedMeal] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useUser();
+  const today = getTodayDate();
+  const { dailyLog, refetch, loading } = useDailyLog(user?.uid || null, today);
+
+  const [foodName, setFoodName] = useState('');
+  const [calories, setCalories] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   const theme = useColorScheme();
   const isDark = theme === 'dark';
 
@@ -38,126 +35,207 @@ export default function FoodLogScreen() {
     textPrimary: isDark ? '#F3F3F3' : '#111',
     textSecondary: isDark ? '#A5A5A7' : '#666',
     accent: '#007AFF',
+    danger: '#FF3B30',
     shadow: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.08)',
   };
 
-  const filteredFoods = MOCK_FOODS.filter((food) =>
-    food.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleAddFood = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to log food.');
+      return;
+    }
+
+    if (!foodName.trim() || !calories.trim()) {
+      Alert.alert('Missing fields', 'Please enter food name and calories.');
+      return;
+    }
+
+    const calorieValue = parseInt(calories, 10);
+    if (isNaN(calorieValue) || calorieValue <= 0) {
+      Alert.alert('Invalid calories', 'Please enter a valid calorie amount.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await logFood(user.uid, today, foodName.trim(), calorieValue);
+      setFoodName('');
+      setCalories('');
+      await refetch();
+      Alert.alert('Success', 'Food logged successfully!');
+    } catch (error: any) {
+      console.error('Error logging food:', error);
+      Alert.alert('Error', error.message || 'Failed to log food.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteFood = async (itemId: string) => {
+    if (!user) return;
+
+    Alert.alert(
+      'Delete Food',
+      'Are you sure you want to remove this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteFood(user.uid, today, itemId);
+              await refetch();
+            } catch (error: any) {
+              console.error('Error deleting food:', error);
+              Alert.alert('Error', error.message || 'Failed to delete food.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <ThemedView style={[styles.header]}>
+        <ThemedView style={styles.header}>
           <ThemedText type="title" style={[styles.title, { color: colors.textPrimary }]}>
-            Log Food
+            Food Log
+          </ThemedText>
+          <ThemedText style={[styles.dateText, { color: colors.textSecondary }]}>
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'short',
+              day: 'numeric',
+            })}
           </ThemedText>
         </ThemedView>
 
-        {/* Meal Type Selection */}
-        <ThemedView style={styles.mealTypes}>
-          {MEAL_TYPES.map((meal) => {
-            const selected = selectedMeal === meal.id;
-            return (
-              <Pressable
-                key={meal.id}
-                onPress={() => setSelectedMeal(meal.id)}
-                style={[
-                  styles.mealTypeButton,
-                  {
-                    backgroundColor: selected ? colors.accent : colors.card,
-                    borderColor: selected ? colors.accent : colors.border,
-                    shadowColor: colors.shadow,
-                  },
-                ]}
-              >
-                <IconSymbol
-                  name={meal.icon}
-                  size={26}
-                  color={selected ? '#FFF' : colors.accent}
-                />
-                <ThemedText
-                  style={[
-                    styles.mealTypeText,
-                    { color: selected ? '#FFF' : colors.textPrimary },
-                  ]}
-                >
-                  {meal.name}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </ThemedView>
-
-        {/* Search Bar */}
+        {/* Add Food Form */}
         <ThemedView
           style={[
-            styles.searchContainer,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              shadowColor: colors.shadow,
-            },
+            styles.addFoodCard,
+            { backgroundColor: colors.card, shadowColor: colors.shadow },
           ]}
         >
-          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
+          <ThemedText style={[styles.cardTitle, { color: colors.textPrimary }]}>
+            Add Food
+          </ThemedText>
+
           <TextInput
-            style={[styles.searchInput, { color: colors.textPrimary }]}
-            placeholder="Search foods..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            placeholder="Food name"
             placeholderTextColor={colors.textSecondary}
+            value={foodName}
+            onChangeText={setFoodName}
+            style={[
+              styles.input,
+              {
+                color: colors.textPrimary,
+                backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5',
+                borderColor: colors.border,
+              },
+            ]}
           />
+
+          <TextInput
+            placeholder="Calories"
+            placeholderTextColor={colors.textSecondary}
+            value={calories}
+            onChangeText={setCalories}
+            keyboardType="number-pad"
+            style={[
+              styles.input,
+              {
+                color: colors.textPrimary,
+                backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5',
+                borderColor: colors.border,
+              },
+            ]}
+          />
+
+          <Pressable
+            onPress={handleAddFood}
+            disabled={submitting}
+            style={[
+              styles.addButton,
+              { backgroundColor: colors.accent },
+            ]}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <ThemedText style={styles.addButtonText}>Add Food</ThemedText>
+            )}
+          </Pressable>
         </ThemedView>
 
-        {/* Food List */}
-        <ThemedView style={[styles.foodList, { backgroundColor: colors.card }]}>
-          {filteredFoods.map((food, index) => (
-            <Pressable
-              key={food.id}
+        {/* Today's Log */}
+        <ThemedView style={styles.logSection}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+            Today's Log
+          </ThemedText>
+
+          {loading ? (
+            <View style={styles.centerContent}>
+              <ActivityIndicator size="large" color={colors.accent} />
+            </View>
+          ) : !dailyLog || dailyLog.items.length === 0 ? (
+            <ThemedView
               style={[
-                styles.foodItem,
-                {
-                  borderBottomColor:
-                    index !== filteredFoods.length - 1 ? colors.border : 'transparent',
-                },
+                styles.emptyCard,
+                { backgroundColor: colors.card, shadowColor: colors.shadow },
               ]}
             >
-              <ThemedView>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={{ color: colors.textPrimary }}
+              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No food logged yet today
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            <>
+              <ThemedView
+                style={[
+                  styles.totalCard,
+                  { backgroundColor: colors.accent, shadowColor: colors.shadow },
+                ]}
+              >
+                <ThemedText style={styles.totalLabel}>Total Calories</ThemedText>
+                <ThemedText style={styles.totalValue}>
+                  {dailyLog.totalCalories} cal
+                </ThemedText>
+              </ThemedView>
+
+              {dailyLog.items.map((item) => (
+                <ThemedView
+                  key={item.id}
+                  style={[
+                    styles.foodItem,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
                 >
-                  {food.name}
-                </ThemedText>
-                <ThemedText style={[styles.servingText, { color: colors.textSecondary }]}>
-                  {food.serving}
-                </ThemedText>
-              </ThemedView>
-
-              <ThemedView style={styles.calorieContainer}>
-                <ThemedText style={{ color: colors.textPrimary }}>
-                  {food.calories}
-                </ThemedText>
-                <ThemedText style={[styles.calorieLabel, { color: colors.textSecondary }]}>
-                  cal
-                </ThemedText>
-              </ThemedView>
-            </Pressable>
-          ))}
-        </ThemedView>
-
-        {/* Quick Add Button */}
-        <ThemedView style={styles.quickAddContainer}>
-          <Pressable style={[styles.quickAddButton, { backgroundColor: colors.accent }]}>
-            <IconSymbol name="plus.circle.fill" size={24} color="#fff" />
-            <ThemedText style={styles.quickAddText}>Quick Add Custom Food</ThemedText>
-          </Pressable>
+                  <View style={styles.foodInfo}>
+                    <ThemedText style={[styles.foodName, { color: colors.textPrimary }]}>
+                      {item.name}
+                    </ThemedText>
+                    <ThemedText style={[styles.foodCalories, { color: colors.textSecondary }]}>
+                      {item.calories} cal
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    onPress={() => handleDeleteFood(item.id)}
+                    style={styles.deleteButton}
+                  >
+                    <Trash2 size={20} color={colors.danger} />
+                  </Pressable>
+                </ThemedView>
+              ))}
+            </>
+          )}
         </ThemedView>
       </ScrollView>
     </ThemedView>
@@ -165,110 +243,128 @@ export default function FoodLogScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { flex: 1 },
-
+  container: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
   header: {
-    paddingHorizontal: 22,
-    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 10,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
   },
-
-  mealTypes: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
+  dateText: {
+    fontSize: 14,
+    marginTop: 4,
   },
-  mealTypeButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
+  addFoodCard: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 20,
     borderRadius: 12,
-    borderWidth: 1.5,
-    marginHorizontal: 4,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 12,
   },
-  mealTypeText: {
-    marginTop: 6,
-    fontSize: 13,
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  input: {
+    height: 48,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    borderWidth: 1,
+  },
+  addButton: {
+    height: 48,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  addButtonText: {
+    color: '#FFF',
+    fontSize: 16,
     fontWeight: '600',
   },
-
-  searchContainer: {
-    flexDirection: 'row',
+  logSection: {
+    marginTop: 30,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  centerContent: {
+    paddingVertical: 40,
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 20,
-    marginBottom: 10,
-    paddingHorizontal: 16,
-    height: 46,
-    borderRadius: 10,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-  },
-
-  foodList: {
-    borderRadius: 14,
-    marginHorizontal: 16,
-    overflow: 'hidden',
+  emptyCard: {
+    padding: 40,
+    borderRadius: 12,
+    alignItems: 'center',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+  },
+  emptyText: {
+    fontSize: 16,
+  },
+  totalCard: {
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 8,
+  },
+  totalLabel: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.9,
+  },
+  totalValue: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '700',
+    marginTop: 4,
   },
   foodItem: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 1,
   },
-  servingText: {
-    fontSize: 13,
+  foodInfo: {
+    flex: 1,
   },
-  calorieContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  calorieLabel: {
-    fontSize: 12,
-  },
-
-  quickAddContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
-  quickAddButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-    elevation: 3,
-  },
-  quickAddText: {
-    color: '#fff',
+  foodName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  foodCalories: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  deleteButton: {
+    padding: 8,
   },
 });

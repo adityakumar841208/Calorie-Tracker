@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.adityasah1.calorietracker"
     },
     "web": {
       "output": "static",
@@ -43,6 +44,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "21bd2afe-3c29-484e-9ece-786ef85afbab"
+      },
+      "firebaseApiKey": "AIzaSyBVqzNP-wPnsIVAWGh1nECHe3tjDNHckyc",
+      "firebaseAuthDomain": "calorie-tracker-5f11b.firebaseapp.com",
+      "firebaseProjectId": "calorie-tracker-5f11b",
+      "firebaseStorageBucket": "calorie-tracker-5f11b.firebasestorage.app",
+      "firebaseMessagingSenderId": "41388659467",
+      "firebaseAppId": "1:41388659467:web:e51019364ce08a7395c80e"
     }
   }
 }

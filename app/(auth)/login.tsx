@@ -36,11 +36,21 @@ export default function LoginScreen() {
             await AsyncStorage.setItem('userEmail', email);
 
             const hasCompletedOnboarding = await AsyncStorage.getItem('onboardingComplete');
-            if (hasCompletedOnboarding === 'true') {
-                router.replace('/(app)' as any);
-            } else {
-                router.replace('/(onboarding)/goals' as any);
-            }
+                        if (hasCompletedOnboarding === 'true') {
+                                try {
+                                    router.replace('/(app)' as any);
+                                } catch (e) {
+                                    Alert.alert('Navigation error', 'Could not navigate to app. Please update the app or contact support.');
+                                    console.warn('Navigation error:', e);
+                                }
+                        } else {
+                                try {
+                                    router.replace('/(onboarding)/goals' as any);
+                                } catch (e) {
+                                    Alert.alert('Navigation error', 'Could not navigate to onboarding. Please update the app or contact support.');
+                                    console.warn('Navigation error:', e);
+                                }
+                        }
         } catch (e: any) {
             console.warn(e);
             const message = e?.message ?? 'Login failed. Please try again.';

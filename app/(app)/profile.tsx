@@ -1,48 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useUser } from '@/hooks/useUser';
+import { auth } from '@/lib/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, useColorScheme } from 'react-native';
-
-const MOCK_USER = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  goal: 'weight-loss',
-  dailyCalories: 2000,
-};
-
-const SETTINGS_SECTIONS = [
-  {
-    title: 'Preferences',
-    items: [
-      { id: 'notifications', title: 'Push Notifications', type: 'toggle' },
-      { id: 'darkMode', title: 'Dark Mode', type: 'toggle' },
-      { id: 'goals', title: 'Update Goals', type: 'link', icon: 'target' },
-      { id: 'measurements', title: 'Units of Measurement', type: 'link', icon: 'ruler' },
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
-      { id: 'profile', title: 'Edit Profile', type: 'link', icon: 'person' },
-      { id: 'password', title: 'Change Password', type: 'link', icon: 'key' },
-      { id: 'privacy', title: 'Privacy Settings', type: 'link', icon: 'lock' },
-    ],
-  },
-  {
-    title: 'Support',
-    items: [
-      { id: 'help', title: 'Help & FAQ', type: 'link', icon: 'questionmark.circle' },
-      { id: 'contact', title: 'Contact Support', type: 'link', icon: 'envelope' },
-      { id: 'about', title: 'About', type: 'link', icon: 'info.circle' },
-    ],
-  },
-];
+import { LogOut, Minus, Target, TrendingDown, TrendingUp, User } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useColorScheme, View } from 'react-native';
 
 export default function ProfileScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const { user, profile, loading } = useUser();
   const theme = useColorScheme();
   const isDark = theme === 'dark';
 
@@ -57,13 +23,61 @@ export default function ProfileScreen() {
     shadow: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.08)',
   };
 
-  const handleSettingPress = (id: string) => {
-    console.log('Setting pressed:', id);
+  const getGoalIcon = () => {
+    if (!profile) return <Target size={20} color={colors.accent} />;
+    switch (profile.goal) {
+      case 'lose':
+        return <TrendingDown size={20} color={colors.accent} />;
+      case 'gain':
+        return <TrendingUp size={20} color={colors.accent} />;
+      default:
+        return <Minus size={20} color={colors.accent} />;
+    }
   };
 
-  const handleLogout = () => {
-    router.replace('/(auth)/login');
+  const getGoalText = () => {
+    if (!profile) return 'Not Set';
+    switch (profile.goal) {
+      case 'lose':
+        return 'Lose Weight';
+      case 'gain':
+        return 'Gain Weight';
+      default:
+        return 'Maintain Weight';
+    }
   };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await auth.signOut();
+              await AsyncStorage.clear();
+              router.replace('/');
+            } catch (error) {
+              console.error('Error logging out:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -73,90 +87,59 @@ export default function ProfileScreen() {
     >
       {/* Profile Header */}
       <ThemedView style={[styles.header, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-        <ThemedView style={styles.avatarContainer}>
-          <IconSymbol name="person.crop.circle.fill" size={80} color={colors.accent} />
-        </ThemedView>
+        <View style={[styles.avatarContainer, { backgroundColor: colors.accent + '20', borderColor: colors.accent }]}>
+          <User size={48} color={colors.accent} />
+        </View>
         <ThemedText type="title" style={[styles.name, { color: colors.textPrimary }]}>
-          {MOCK_USER.name}
+          {user?.email?.split('@')[0] || 'User'}
         </ThemedText>
         <ThemedText style={[styles.email, { color: colors.textSecondary }]}>
-          {MOCK_USER.email}
+          {user?.email || 'No email'}
         </ThemedText>
       </ThemedView>
 
-      {/* Settings Sections */}
-      {SETTINGS_SECTIONS.map((section) => (
-        <ThemedView key={section.title} style={styles.section}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {section.title}
-          </ThemedText>
-
-          <ThemedView
-            style={[
-              styles.sectionContent,
-              { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow },
-            ]}
-          >
-            {section.items.map((item, index) => {
-              const isLast = index === section.items.length - 1;
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[
-                    styles.settingItem,
-                    !isLast && { borderBottomColor: colors.border, borderBottomWidth: 1 },
-                  ]}
-                  onPress={() => handleSettingPress(item.id)}
-                >
-                  {item.icon && (
-                    <IconSymbol
-                      name={item.icon}
-                      size={22}
-                      color={colors.accent}
-                      style={styles.settingIcon}
-                    />
-                  )}
-                  <ThemedText style={[styles.settingTitle, { color: colors.textPrimary }]}>
-                    {item.title}
-                  </ThemedText>
-                  {item.type === 'toggle' ? (
-                    <Switch
-                      trackColor={{ false: colors.border, true: colors.accent }}
-                      thumbColor={isDark ? '#FFF' : '#FFF'}
-                      value={item.id === 'notifications' ? notificationsEnabled : darkMode}
-                      onValueChange={(value) => {
-                        if (item.id === 'notifications') {
-                          setNotificationsEnabled(value);
-                        } else if (item.id === 'darkMode') {
-                          setDarkMode(value);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <IconSymbol name="chevron.right" size={18} color={colors.textSecondary} />
-                  )}
-                </Pressable>
-              );
-            })}
-          </ThemedView>
-        </ThemedView>
-      ))}
+      {/* Goal Card */}
+      <ThemedView style={[styles.goalCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+        <ThemedText type="subtitle" style={[styles.goalCardTitle, { color: colors.textPrimary }]}>
+          Your Goal
+        </ThemedText>
+        <View style={styles.goalInfo}>
+          <View style={styles.goalIconContainer}>
+            {getGoalIcon()}
+          </View>
+          <View style={styles.goalDetails}>
+            <ThemedText style={[styles.goalText, { color: colors.textPrimary }]}>
+              {getGoalText()}
+            </ThemedText>
+            <ThemedText style={[styles.goalSubtext, { color: colors.textSecondary }]}>
+              {profile?.targetCalories || 0} calories/day
+            </ThemedText>
+          </View>
+        </View>
+      </ThemedView>
 
       {/* Logout Button */}
       <Pressable
-        style={[styles.logoutButton, { backgroundColor: colors.danger, shadowColor: colors.shadow }]}
+        style={[styles.logoutButton, { backgroundColor: colors.danger }]}
         onPress={handleLogout}
       >
+        <LogOut size={20} color="#FFF" />
         <ThemedText style={styles.logoutText}>Logout</ThemedText>
       </Pressable>
 
-      <ThemedText style={[styles.version, { color: colors.textSecondary }]}>Version 1.0.0</ThemedText>
+      <ThemedText style={[styles.version, { color: colors.textSecondary }]}>
+        Version 1.0.0
+      </ThemedText>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -167,7 +150,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 3,
   },
   name: {
     fontSize: 22,
@@ -177,44 +166,53 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    marginHorizontal: 22,
-    marginBottom: 10,
-    fontSize: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionContent: {
-    borderRadius: 14,
+  goalCard: {
     marginHorizontal: 16,
+    padding: 20,
+    borderRadius: 14,
+    marginBottom: 24,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
-  settingItem: {
+  goalCardTitle: {
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  goalInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    gap: 16,
   },
-  settingIcon: {
-    marginRight: 14,
+  goalIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  settingTitle: {
+  goalDetails: {
     flex: 1,
-    fontSize: 16,
+  },
+  goalText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  goalSubtext: {
+    fontSize: 14,
+    marginTop: 4,
   },
   logoutButton: {
+    flexDirection: 'row',
     marginHorizontal: 22,
     marginTop: 8,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     elevation: 3,
   },
   logoutText: {

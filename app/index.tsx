@@ -4,18 +4,27 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 export default function WelcomeScreen() {
   console.log('WelcomeScreen rendering');
   
+  const safeNavigate = (route: string) => {
+    try {
+      router.push(route as any);
+    } catch (e) {
+      alert('Navigation failed. Please update the app or contact support.');
+      console.warn('Navigation error:', e);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
         Welcome to Calorie Tracker
       </Text>
       <View style={styles.buttonContainer}>
-        <Pressable onPress={() => router.push('/(auth)/login')} style={styles.button}>
+        <Pressable onPress={() => safeNavigate('/(auth)/login')} style={styles.button}>
           <Text style={styles.buttonText}>
             Sign In
           </Text>
         </Pressable>
-        <Pressable onPress={() => router.push('/(auth)/register')} style={styles.button}>
+        <Pressable onPress={() => safeNavigate('/(auth)/register')} style={styles.button}>
           <Text style={styles.buttonText}>
             Sign Up
           </Text>

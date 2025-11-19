@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { auth } from '@/lib/firebase';
+import { createUserProfile } from '@/services/userService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
 
 const calculateRecommendedCalories = (goal: string) => {
   switch (goal) {
@@ -17,9 +19,22 @@ const calculateRecommendedCalories = (goal: string) => {
   }
 };
 
+const mapGoalToFirestore = (goal: string): 'lose' | 'maintain' | 'gain' => {
+  switch (goal) {
+    case 'weight-loss':
+      return 'lose';
+    case 'weight-gain':
+      return 'gain';
+    case 'maintain':
+    default:
+      return 'maintain';
+  }
+};
+
 export default function TargetScreen() {
   const { goal } = useLocalSearchParams<{ goal: string }>();
   const [calories, setCalories] = useState(calculateRecommendedCalories(goal).toString());
+  const [loading, setLoading] = useState(false);
   const theme = useColorScheme();
   const isDark = theme === 'dark';
 
@@ -34,13 +49,58 @@ export default function TargetScreen() {
   };
 
   const handleComplete = async () => {
+    if (!auth.currentUser) {
+      Alert.alert('Error', 'You must be logged in to complete onboarding.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await AsyncStorage.setItem('userGoal', goal);
-      await AsyncStorage.setItem('targetCalories', calories);
-      await AsyncStorage.setItem('onboardingComplete', 'true');
+      const firestoreGoal = mapGoalToFirestore(goal);
+      const targetCalories = parseInt(calories, 10);
+
+      console.log('Saving profile:', { uid: auth.currentUser.uid, firestoreGoal, targetCalories });
+
+      // Wait for auth state to be fully ready
+      await auth.authStateReady();
+      
+      // Save to MongoDB via your backend API
+      await createUserProfile(auth.currentUser.uid, firestoreGoal, targetCalories);
+      
+      console.log('Profile saved successfully to MongoDB');
+
+      // Save to AsyncStorage (wrapped in try-catch to handle separately)
+      try {
+        await AsyncStorage.setItem('userGoal', goal);
+        await AsyncStorage.setItem('targetCalories', calories);
+        await AsyncStorage.setItem('onboardingComplete', 'true');
+        console.log('AsyncStorage saved successfully');
+      } catch (storageError: any) {
+        console.error('AsyncStorage error (non-critical):', storageError);
+        // Continue anyway as profile is already saved to MongoDB
+      }
+      
+      console.log('Navigating to home...');
+
       router.replace('/(app)/home');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving onboarding data:', error);
+      console.error('Error details:', error.message, error.code);
+      
+      // Determine the actual error source
+      let errorMessage = 'Please try again.';
+      
+      if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+        errorMessage = 'Cannot connect to server. Make sure the backend is running on port 3000.';
+      } else if (error.message?.includes('permission') || error.code?.includes('permission')) {
+        errorMessage = 'Authentication issue. Please try logging out and back in.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', `Failed to save your profile: ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,9 +168,13 @@ export default function TargetScreen() {
             styles.button,
             { backgroundColor: calories ? colors.accent : colors.border },
           ]}
-          disabled={!calories}
+          disabled={!calories || loading}
         >
-          <ThemedText style={styles.buttonText}>Start Tracking</ThemedText>
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <ThemedText style={styles.buttonText}>Start Tracking</ThemedText>
+          )}
         </Pressable>
       </ThemedView>
     </ThemedView>

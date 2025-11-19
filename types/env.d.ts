@@ -1,8 +1,4 @@
-declare module '@env' {
-  export const FIREBASE_API_KEY: string;
-  export const FIREBASE_AUTH_DOMAIN: string;
-  export const FIREBASE_PROJECT_ID: string;
-  export const FIREBASE_STORAGE_BUCKET: string;
-  export const FIREBASE_MESSAGING_SENDER_ID: string;
-  export const FIREBASE_APP_ID: string;
-}
+// Firebase configuration is now in app.json under extra field
+// Access via: Constants.expoConfig?.extra?.firebaseApiKey
+// See FIREBASE_CONFIG_GUIDE.md for more details
+

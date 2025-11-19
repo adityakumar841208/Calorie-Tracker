@@ -1,24 +1,16 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useDailyLog } from '@/hooks/useDailyLog';
+import { useUser } from '@/hooks/useUser';
+import { getTodayDate } from '@/services/dailyLogService';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, ScrollView, StyleSheet, useColorScheme, View } from 'react-native';
-
-const MOCK_DATA = {
-  dailyGoal: 2000,
-  consumed: 1450,
-  remaining: 550,
-  waterGoal: 8,
-  waterConsumed: 5,
-  meals: [
-    { id: 1, name: 'Breakfast', calories: 350, time: '8:30 AM' },
-    { id: 2, name: 'Lunch', calories: 650, time: '1:00 PM' },
-    { id: 3, name: 'Snack', calories: 200, time: '4:00 PM' },
-    { id: 4, name: 'Dinner', calories: 250, time: '7:30 PM' },
-  ],
-};
+import { Activity, Minus, TrendingDown, TrendingUp } from 'lucide-react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, useColorScheme, View } from 'react-native';
 
 export default function HomeScreen() {
+  const { user, profile, loading: userLoading } = useUser();
+  const today = getTodayDate();
+  const { dailyLog, loading: logLoading } = useDailyLog(user?.uid || null, today);
   const theme = useColorScheme();
   const isDark = theme === 'dark';
 
@@ -33,39 +25,77 @@ export default function HomeScreen() {
     shadow: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.08)',
   };
 
+  const loading = userLoading || logLoading;
+  const targetCalories = profile?.targetCalories || 2000;
+  
+  // Calculate consumed calories from daily log items
+  const consumed = dailyLog?.items.reduce((sum, item) => sum + (item.calories || 0), 0) || 0;
+  const remaining = targetCalories - consumed;
+
+  const getGoalIcon = () => {
+    if (!profile) return <Activity size={20} color="#FFF" />;
+    switch (profile.goal) {
+      case 'lose':
+        return <TrendingDown size={20} color="#FFF" />;
+      case 'gain':
+        return <TrendingUp size={20} color="#FFF" />;
+      default:
+        return <Minus size={20} color="#FFF" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <ThemedView style={[styles.header]}>
-        <ThemedText type="title" style={{ color: colors.textPrimary }}>
-          Today
-        </ThemedText>
-        <Pressable>
-          <IconSymbol name="bell" size={26} color={colors.textSecondary} />
-        </Pressable>
+      <ThemedView style={styles.header}>
+        <View>
+          <ThemedText type="title" style={{ color: colors.textPrimary }}>
+            Dashboard
+          </ThemedText>
+          <ThemedText style={[styles.dateText, { color: colors.textSecondary }]}>
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </ThemedText>
+        </View>
       </ThemedView>
 
-      {/* Section: Calorie Summary */}
+      {/* Calorie Summary */}
       <LinearGradient
         colors={colors.accentGradient as unknown as readonly [string, string]}
         style={styles.gradientCard}
       >
         <ThemedView style={styles.gradientContent}>
-          <ThemedText type="subtitle" style={{ color: '#FFF' }}>
-            Calories
-          </ThemedText>
+          <View style={styles.goalBadge}>
+            {getGoalIcon()}
+            <ThemedText style={styles.goalText}>
+              {profile?.goal === 'lose' ? 'Weight Loss' : profile?.goal === 'gain' ? 'Weight Gain' : 'Maintain Weight'}
+            </ThemedText>
+          </View>
+
           <View style={styles.calorieCircleContainer}>
             <View style={[styles.calorieCircle, { borderColor: '#FFF' }]}>
               <ThemedText style={[styles.calorieRemaining, { color: '#FFF' }]}>
-                {MOCK_DATA.remaining}
+                {remaining}
               </ThemedText>
               <ThemedText style={{ color: '#FFF', opacity: 0.8 }}>remaining</ThemedText>
             </View>
           </View>
+
           <View style={styles.calorieStats}>
             <View style={styles.calorieStat}>
               <ThemedText style={[styles.statValue, { color: '#FFF' }]}>
-                {MOCK_DATA.consumed}
+                {consumed}
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: '#FFF', opacity: 0.8 }]}>
                 consumed
@@ -73,7 +103,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.calorieStat}>
               <ThemedText style={[styles.statValue, { color: '#FFF' }]}>
-                {MOCK_DATA.dailyGoal}
+                {targetCalories}
               </ThemedText>
               <ThemedText style={[styles.statLabel, { color: '#FFF', opacity: 0.8 }]}>
                 daily goal
@@ -83,83 +113,44 @@ export default function HomeScreen() {
         </ThemedView>
       </LinearGradient>
 
-      {/* Section Divider */}
-      <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
-      {/* Section: Water Tracking */}
+      {/* Today's Log */}
       <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
         <View style={styles.cardHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <IconSymbol name="drop.fill" size={22} color={colors.accent} />
-            <ThemedText type="subtitle" style={{ color: colors.textPrimary }}>
-              Water
-            </ThemedText>
-          </View>
+          <ThemedText type="subtitle" style={{ color: colors.textPrimary }}>
+            Today's Meals
+          </ThemedText>
           <ThemedText style={{ color: colors.textSecondary, fontSize: 13 }}>
-            {MOCK_DATA.waterConsumed}/{MOCK_DATA.waterGoal}
+            {dailyLog?.items.length || 0} items
           </ThemedText>
         </View>
 
-        <View style={styles.waterContainer}>
-          {Array.from({ length: MOCK_DATA.waterGoal }).map((_, index) => (
-            <Pressable
-              key={index}
-              style={[
-                styles.waterDrop,
-                {
-                  backgroundColor:
-                    index < MOCK_DATA.waterConsumed ? colors.accent : colors.divider,
-                  opacity: index < MOCK_DATA.waterConsumed ? 1 : 0.4,
-                },
-              ]}
-            />
-          ))}
-        </View>
-        <ThemedText style={[styles.waterText, { color: colors.textSecondary }]}>
-          {MOCK_DATA.waterConsumed} of {MOCK_DATA.waterGoal} glasses
-        </ThemedText>
-      </ThemedView>
-
-      {/* Section Divider */}
-      <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
-      {/* Section: Meals */}
-      <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-        <View style={styles.cardHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <IconSymbol name="fork.knife" size={20} color={colors.accent} />
-            <ThemedText type="subtitle" style={{ color: colors.textPrimary }}>
-              Today Meals
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.mealsList}>
-          {MOCK_DATA.meals.map(meal => (
-            <ThemedView
-              key={meal.id}
-              style={[
-                styles.mealItem,
-                { borderBottomColor: colors.divider },
-                meal.id === MOCK_DATA.meals.length && { borderBottomWidth: 0 },
-              ]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <IconSymbol name="leaf.fill" size={16} color={colors.accent} />
+        {(!dailyLog || dailyLog.items.length === 0) ? (
+          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+            No meals logged today. Tap "Food Log" to add your first meal!
+          </ThemedText>
+        ) : (
+          <View style={styles.mealsList}>
+            {dailyLog.items.slice(0, 5).map((item, index) => (
+              <ThemedView
+                key={item.id}
+                style={[
+                  styles.mealItem,
+                  { borderBottomColor: colors.divider },
+                  index === dailyLog.items.length - 1 && { borderBottomWidth: 0 },
+                ]}
+              >
                 <View>
                   <ThemedText type="defaultSemiBold" style={{ color: colors.textPrimary }}>
-                    {meal.name}
-                  </ThemedText>
-                  <ThemedText style={[styles.mealTime, { color: colors.textSecondary }]}>
-                    {meal.time}
+                    {item.name}
                   </ThemedText>
                 </View>
-              </View>
-              <ThemedText style={{ color: colors.textPrimary }}>
-                {meal.calories} cal
-              </ThemedText>
-            </ThemedView>
-          ))}
-        </View>
+                <ThemedText style={{ color: colors.textPrimary }}>
+                  {item.calories} cal
+                </ThemedText>
+              </ThemedView>
+            ))}
+          </View>
+        )}
       </ThemedView>
     </ScrollView>
   );
@@ -167,16 +158,20 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  centerContent: {
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  header: {
     paddingHorizontal: 22,
     paddingTop: 20,
     paddingBottom: 10,
   },
+  dateText: {
+    fontSize: 14,
+    marginTop: 4,
+  },
 
-  // Gradient Card (Calories)
   gradientCard: {
     marginHorizontal: 16,
     marginBottom: 18,
@@ -190,6 +185,21 @@ const styles = StyleSheet.create({
   gradientContent: {
     padding: 22,
     alignItems: 'center',
+  },
+  goalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  goalText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   calorieCircleContainer: {
@@ -232,8 +242,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
   },
 
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 22,
+  },
+
+  mealsList: { marginTop: 8 },
+  mealItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
   waterContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -249,15 +275,6 @@ const styles = StyleSheet.create({
   waterText: {
     textAlign: 'center',
     fontSize: 14,
-  },
-
-  mealsList: { marginTop: 16 },
-  mealItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
   },
   mealTime: { fontSize: 12 },
   divider: {
