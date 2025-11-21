@@ -23,20 +23,22 @@ export type UserGoal = 'lose' | 'maintain' | 'gain';
 export interface UserProfile {
   goal: UserGoal;
   targetCalories: number;
+  weight: number;
   createdAt: any;
 }
 
 export async function createUserProfile(
   uid: string,
   goal: UserGoal,
-  targetCalories: number
+  targetCalories: number,
+  weight: number
 ): Promise<void> {
   const response = await fetch(`${API_URL}/users`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ uid, goal, targetCalories }),
+    body: JSON.stringify({ uid, goal, targetCalories, weight }),
   });
 
   if (!response.ok) {

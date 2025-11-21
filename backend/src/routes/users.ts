@@ -6,9 +6,9 @@ const router = express.Router();
 // Create user profile
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { uid, goal, targetCalories } = req.body;
+    const { uid, goal, targetCalories, weight } = req.body;
 
-    if (!uid || !goal || !targetCalories) {
+    if (!uid || !goal || !targetCalories || !weight) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -17,7 +17,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'User profile already exists' });
     }
 
-    const user = new User({ uid, goal, targetCalories });
+    const user = new User({ uid, goal, targetCalories, weight });
     await user.save();
 
     res.status(201).json({
@@ -26,6 +26,7 @@ router.post('/', async (req: Request, res: Response) => {
         uid: user.uid,
         goal: user.goal,
         targetCalories: user.targetCalories,
+        weight: user.weight,
         createdAt: user.createdAt,
       },
     });
@@ -49,6 +50,7 @@ router.get('/:uid', async (req: Request, res: Response) => {
       uid: user.uid,
       goal: user.goal,
       targetCalories: user.targetCalories,
+      weight: user.weight,
       createdAt: user.createdAt,
     });
   } catch (error: any) {

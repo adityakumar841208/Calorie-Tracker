@@ -6,6 +6,7 @@ export interface IUser extends Document {
   uid: string;
   goal: UserGoal;
   targetCalories: number;
+  weight: number;
   createdAt: Date;
 }
 
@@ -22,6 +23,10 @@ const UserSchema = new Schema<IUser>({
     required: true,
   },
   targetCalories: {
+    type: Number,
+    required: true,
+  },
+  weight: {
     type: Number,
     required: true,
   },

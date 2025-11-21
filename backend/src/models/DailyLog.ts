@@ -3,9 +3,10 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IFoodItem {
   name: string;
   calories: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  quantity: number;
   timestamp: Date;
 }
 
@@ -18,9 +19,10 @@ export interface IDailyLog extends Document {
 const FoodItemSchema = new Schema<IFoodItem>({
   name: { type: String, required: true },
   calories: { type: Number, required: true },
-  protein: { type: Number },
-  carbs: { type: Number },
-  fat: { type: Number },
+  protein: { type: Number, required: true },
+  carbs: { type: Number, required: true },
+  fat: { type: Number, required: true },
+  quantity: { type: Number, required: true, default: 1 },
   timestamp: { type: Date, default: Date.now },
 });
 

@@ -89,8 +89,8 @@ export default function ModernGoalsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  container: { paddingHorizontal: 22, paddingTop: 30},
-  header: { marginBottom: 20, alignItems: 'center' },
+  container: { paddingHorizontal: 22, paddingTop: 70},
+  header: { marginBottom: 50, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 6, textAlign: 'center' },
   subtitle: { fontSize: 14, textAlign: 'center', opacity: 0.9 },
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 18,
     elevation: 6,
-    minHeight: 109,
+    minHeight: 122,
   },
   iconWrap: {
     width: 56,

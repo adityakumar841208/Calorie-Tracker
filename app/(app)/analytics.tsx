@@ -4,8 +4,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useUser } from '@/hooks/useUser';
 import { AnalyticsData, getWeeklyAnalytics } from '@/services/analyticsService';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
 import { Calendar, ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -28,24 +29,38 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const isFirstRender = useRef(true);
 
   const colors = {
-    background: isDark ? '#0B0B0C' : '#F8F9FB',
-    card: isDark ? '#1C1C1E' : '#FFFFFF',
-    border: isDark ? '#2C2C2E' : '#E5E5E7',
-    textPrimary: isDark ? '#F3F3F3' : '#111',
-    textSecondary: isDark ? '#A5A5A7' : '#666',
-    accent: '#007AFF',
-    warn: '#FF3B30',
-    success: '#34C759',
-    orange: '#FF9500',
-    purple: '#AF52DE',
+    background: isDark ? '#0B0F14' : '#F7F9FB',
+    card: isDark ? '#1F2937' : '#FFFFFF',
+    border: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+    text: isDark ? '#F8FAFC' : '#0F172A',
+    subtext: isDark ? '#94A3B8' : '#64748B',
+    purple: '#5B21B6',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    cyan: '#06B6D4',
     shadow: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.08)',
   };
 
   useEffect(() => {
     loadAnalytics();
   }, [user, selectedDate, viewMode]);
+
+  // Refresh data when screen comes into focus (but not on initial mount)
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+      }
+      if (user) {
+        loadAnalytics();
+      }
+    }, [user])
+  );
 
   const loadAnalytics = async () => {
     if (!user) return;
@@ -93,7 +108,7 @@ export default function AnalyticsScreen() {
   if (loading || !analytics) {
     return (
       <View style={[styles.container, styles.centerContent, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.accent} />
+        <ActivityIndicator size="large" color="#5B21B6" />
       </View>
     );
   }
@@ -116,19 +131,16 @@ export default function AnalyticsScreen() {
       contentContainerStyle={{ paddingBottom: 60 }}
     >
       {/* Header with Date Navigation */}
-      <ThemedView style={styles.header}>
-        <ThemedText type="title" style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          Analytics
-        </ThemedText>
+      <ThemedView style={[styles.header, { backgroundColor: colors.background }]}>
         
         <View style={styles.dateNav}>
           <Pressable onPress={goToPreviousWeek} style={[styles.navButton, { backgroundColor: colors.card }]}>
-            <ChevronLeft size={20} color={colors.textPrimary} />
+            <ChevronLeft size={20} color={colors.text} />
           </Pressable>
           
           <Pressable onPress={goToToday} style={[styles.dateButton, { backgroundColor: colors.card }]}>
-            <Calendar size={16} color={colors.accent} />
-            <ThemedText style={[styles.dateText, { color: colors.textPrimary }]}>
+            <Calendar size={16} color={colors.purple} />
+            <ThemedText style={[styles.dateText, { color: colors.text }]}>
               {formatDateRange()}
             </ThemedText>
           </Pressable>
@@ -140,7 +152,7 @@ export default function AnalyticsScreen() {
           >
             <ChevronRight 
               size={20} 
-              color={selectedDate >= new Date() ? colors.textSecondary : colors.textPrimary} 
+              color={selectedDate >= new Date() ? colors.subtext : colors.text} 
             />
           </Pressable>
         </View>
@@ -148,7 +160,7 @@ export default function AnalyticsScreen() {
 
       {/* Summary Card */}
       <LinearGradient
-        colors={isOnTrack ? ['#34C759', '#30D158'] : ['#FF9500', '#FF6B00']}
+        colors={isOnTrack ? ['#10B981', '#059669'] : ['#F59E0B', '#D97706']}
         style={styles.summaryCard}
       >
         <View style={styles.summaryContent}>
@@ -191,19 +203,19 @@ export default function AnalyticsScreen() {
       {/* Weekly Progress Bar Chart */}
       <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
         <View style={styles.cardHeader}>
-          <ThemedText type="subtitle" style={{ color: colors.textPrimary }}>
+          <ThemedText type="subtitle" style={{ color: colors.text }}>
             Daily Calories
           </ThemedText>
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-              <ThemedText style={[styles.legendText, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
                 On Track
               </ThemedText>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.warn }]} />
-              <ThemedText style={[styles.legendText, { color: colors.textSecondary }]}>
+              <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
+              <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
                 Over
               </ThemedText>
             </View>
@@ -217,7 +229,7 @@ export default function AnalyticsScreen() {
             
             return (
               <View key={day.date} style={styles.barContainer}>
-                <ThemedText style={[styles.barValue, { color: colors.textSecondary }]}>
+                <ThemedText style={[styles.barValue, { color: colors.subtext }]}>
                   {day.calories > 0 ? day.calories : ''}
                 </ThemedText>
                 <View
@@ -228,13 +240,13 @@ export default function AnalyticsScreen() {
                       backgroundColor: day.calories === 0 
                         ? colors.border 
                         : isOver 
-                          ? colors.warn 
+                          ? colors.danger 
                           : colors.success,
                       opacity: day.calories === 0 ? 0.3 : 1,
                     },
                   ]}
                 />
-                <ThemedText style={[styles.barLabel, { color: colors.textSecondary }]}>
+                <ThemedText style={[styles.barLabel, { color: colors.subtext }]}>
                   {getDayLabel(day.date)}
                 </ThemedText>
               </View>
@@ -244,8 +256,8 @@ export default function AnalyticsScreen() {
         
         {/* Target Line */}
         <View style={styles.targetLineContainer}>
-          <View style={[styles.targetLine, { borderColor: colors.accent }]} />
-          <ThemedText style={[styles.targetLabel, { color: colors.accent }]}>
+          <View style={[styles.targetLine, { borderColor: colors.purple }]} />
+          <ThemedText style={[styles.targetLabel, { color: colors.purple }]}>
             Target: {targetCalories}
           </ThemedText>
         </View>
@@ -253,7 +265,7 @@ export default function AnalyticsScreen() {
 
       {/* Macro Breakdown */}
       <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-        <ThemedText type="subtitle" style={{ color: colors.textPrimary, marginBottom: 20 }}>
+        <ThemedText type="subtitle" style={{ color: colors.text, marginBottom: 20 }}>
           Average Macros
         </ThemedText>
 
@@ -261,7 +273,7 @@ export default function AnalyticsScreen() {
           {[
             { 
               label: 'Carbs', 
-              color: colors.accent, 
+              color: colors.purple, 
               value: analytics.averageCarbs,
               percent: carbsPercent,
               icon: '🍞',
@@ -277,7 +289,7 @@ export default function AnalyticsScreen() {
             },
             { 
               label: 'Fat', 
-              color: colors.orange, 
+              color: colors.warning, 
               value: analytics.averageFat,
               percent: fatPercent,
               icon: '🥑',
@@ -289,10 +301,10 @@ export default function AnalyticsScreen() {
                 <ThemedText style={styles.macroIcon}>{m.icon}</ThemedText>
                 <ThemedText style={styles.macroPercentage}>{m.percent}%</ThemedText>
               </View>
-              <ThemedText style={[styles.macroLabel, { color: colors.textPrimary }]}>
+              <ThemedText style={[styles.macroLabel, { color: colors.text }]}>
                 {m.label}
               </ThemedText>
-              <ThemedText style={[styles.macroValue, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.macroValue, { color: colors.subtext }]}>
                 {m.value}g · {m.info}
               </ThemedText>
             </View>
@@ -300,8 +312,8 @@ export default function AnalyticsScreen() {
         </View>
         
         {/* Macro Info */}
-        <View style={[styles.infoBox, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F7' }]}>
-          <ThemedText style={[styles.infoText, { color: colors.textSecondary }]}>
+        <View style={[styles.infoBox, { backgroundColor: isDark ? '#1F2937' : '#E0E7FF' }]}>
+          <ThemedText style={[styles.infoText, { color: colors.subtext }]}>
             💡 Macronutrients provide energy: Carbs and Protein have 4 calories per gram, while Fat has 9 calories per gram.
           </ThemedText>
         </View>
@@ -309,20 +321,20 @@ export default function AnalyticsScreen() {
 
       {/* Nutrition Info Card */}
       <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-        <ThemedText type="subtitle" style={{ color: colors.textPrimary, marginBottom: 16 }}>
+        <ThemedText type="subtitle" style={{ color: colors.text, marginBottom: 16 }}>
           What Are Calories?
         </ThemedText>
         
         <View style={styles.infoSection}>
           <View style={styles.infoItem}>
-            <View style={[styles.infoIconCircle, { backgroundColor: colors.accent + '20' }]}>
+            <View style={[styles.infoIconCircle, { backgroundColor: colors.purple + '20' }]}>
               <ThemedText style={styles.infoEmoji}>⚡</ThemedText>
             </View>
             <View style={styles.infoContent}>
-              <ThemedText style={[styles.infoTitle, { color: colors.textPrimary }]}>
+              <ThemedText style={[styles.infoTitle, { color: colors.text }]}>
                 Energy Unit
               </ThemedText>
-              <ThemedText style={[styles.infoDesc, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.infoDesc, { color: colors.subtext }]}>
                 Calories measure the energy your body gets from food
               </ThemedText>
             </View>
@@ -333,24 +345,24 @@ export default function AnalyticsScreen() {
               <ThemedText style={styles.infoEmoji}>🎯</ThemedText>
             </View>
             <View style={styles.infoContent}>
-              <ThemedText style={[styles.infoTitle, { color: colors.textPrimary }]}>
+              <ThemedText style={[styles.infoTitle, { color: colors.text }]}>
                 Balance is Key
               </ThemedText>
-              <ThemedText style={[styles.infoDesc, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.infoDesc, { color: colors.subtext }]}>
                 Consume fewer calories to lose weight, more to gain, equal to maintain
               </ThemedText>
             </View>
           </View>
 
           <View style={styles.infoItem}>
-            <View style={[styles.infoIconCircle, { backgroundColor: colors.orange + '20' }]}>
+            <View style={[styles.infoIconCircle, { backgroundColor: colors.warning + '20' }]}>
               <ThemedText style={styles.infoEmoji}>🍎</ThemedText>
             </View>
             <View style={styles.infoContent}>
-              <ThemedText style={[styles.infoTitle, { color: colors.textPrimary }]}>
+              <ThemedText style={[styles.infoTitle, { color: colors.text }]}>
                 Quality Matters
               </ThemedText>
-              <ThemedText style={[styles.infoDesc, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.infoDesc, { color: colors.subtext }]}>
                 Not all calories are equal - focus on nutrient-dense whole foods
               </ThemedText>
             </View>
@@ -362,12 +374,12 @@ export default function AnalyticsScreen() {
       {analytics.streakDays > 0 && (
         <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <View style={styles.streakContainer}>
-            <IconSymbol name="flame.fill" size={56} color={colors.warn} />
+            <IconSymbol name="flame.fill" size={56} color={colors.warning} />
             <View style={styles.streakInfo}>
-              <ThemedText type="title" style={{ color: colors.textPrimary, fontSize: 32 }}>
+              <ThemedText type="title" style={{ color: colors.text, fontSize: 32 }}>
                 {analytics.streakDays} {analytics.streakDays === 1 ? 'Day' : 'Days'}
               </ThemedText>
-              <ThemedText style={[styles.streakLabel, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.streakLabel, { color: colors.subtext }]}>
                 Current tracking streak! Keep it up! 🎉
               </ThemedText>
             </View>

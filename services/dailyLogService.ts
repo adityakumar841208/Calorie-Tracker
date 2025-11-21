@@ -13,9 +13,10 @@ export interface FoodItem {
   id?: string;
   name: string;
   calories: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  quantity: number;
   timestamp: Date;
 }
 
@@ -46,7 +47,11 @@ export async function logFood(
   uid: string,
   date: string,
   name: string,
-  calories: number
+  calories: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+  quantity: number
 ): Promise<void> {
   const response = await fetch(`${API_URL}/daily-logs`, {
     method: 'POST',
@@ -56,7 +61,7 @@ export async function logFood(
     body: JSON.stringify({
       uid,
       date,
-      foodItem: { name, calories },
+      foodItem: { name, calories, protein, carbs, fat, quantity },
     }),
   });
 
