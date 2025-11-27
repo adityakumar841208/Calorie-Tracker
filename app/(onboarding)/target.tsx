@@ -1,5 +1,5 @@
 import { auth } from '@/lib/firebase';
-import { createUserProfile } from '@/services/userService';
+import { createUserProfile, getUserProfile, updateUserProfile } from '@/services/userService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -119,20 +119,46 @@ export default function TargetScreen() {
     }
 
     setLoading(true);
+    console.log('Starting profile update/create...');
     try {
       // @ts-ignore 
       await auth.authStateReady?.();
       
       const firestoreGoal = goal === 'weight-loss' ? 'lose' : goal === 'weight-gain' ? 'gain' : 'maintain';
-      await createUserProfile(auth.currentUser.uid, firestoreGoal, parsed, parsedWeight);
+      console.log('User ID:', auth.currentUser.uid);
+      console.log('Goal:', firestoreGoal, 'Calories:', parsed, 'Weight:', parsedWeight);
+      
+      // Check if user profile already exists
+      console.log('Checking for existing profile...');
+      const existingProfile = await getUserProfile(auth.currentUser.uid);
+      console.log('Existing profile:', existingProfile);
+      
+      if (existingProfile) {
+        // Update existing profile
+        console.log('Updating existing profile...');
+        await updateUserProfile(auth.currentUser.uid, {
+          goal: firestoreGoal,
+          targetCalories: parsed,
+          weight: parsedWeight
+        });
+        console.log('Profile updated successfully');
+      } else {
+        // Create new profile
+        console.log('Creating new profile...');
+        await createUserProfile(auth.currentUser.uid, firestoreGoal, parsed, parsedWeight);
+        console.log('Profile created successfully');
+      }
 
       await AsyncStorage.setItem('userGoal', goal ?? 'maintain');
       await AsyncStorage.setItem('targetCalories', String(parsed));
       await AsyncStorage.setItem('userWeight', String(parsedWeight));
       await AsyncStorage.setItem('onboardingComplete', 'true');
+      console.log('AsyncStorage updated');
 
+      console.log('Navigating to home...');
       router.replace('/(app)/home');
     } catch (err: any) {
+      console.error('Error in handleComplete:', err);
       Alert.alert('Error', err.message || 'Failed to save settings.');
     } finally {
       setLoading(false);

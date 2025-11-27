@@ -14,6 +14,7 @@ import {
   ScrollView,
   StyleSheet,
   useColorScheme,
+  useWindowDimensions,
   View
 } from 'react-native';
 
@@ -24,7 +25,7 @@ export default function AnalyticsScreen() {
   const { user, profile } = useUser();
   const theme = useColorScheme();
   const isDark = theme === 'dark';
-  
+  const { height } = useWindowDimensions();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -116,6 +117,10 @@ export default function AnalyticsScreen() {
   const maxCalories = Math.max(...analytics.weeklyData.map((d) => d.calories), 1);
   const targetCalories = profile?.targetCalories || 2000;
   
+  // Calculate responsive max for chart (add 20% padding above highest value or target)
+  const chartMax = Math.max(maxCalories, targetCalories) * 1.2;
+  const CHART_HEIGHT = 160; // Reduced from 180 for better fit
+  
   // Calculate macro percentages
   const totalMacros = analytics.averageProtein + analytics.averageCarbs + analytics.averageFat || 1;
   const proteinPercent = Math.round((analytics.averageProtein / totalMacros) * 100);
@@ -206,60 +211,86 @@ export default function AnalyticsScreen() {
           <ThemedText type="subtitle" style={{ color: colors.text }}>
             Daily Calories
           </ThemedText>
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-              <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
-                On Track
-              </ThemedText>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
-              <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
-                Over
+        </View>
+
+        <View style={styles.chartWrapper}>
+          <View style={[styles.chart, { height: CHART_HEIGHT + 40 }]}>
+            {analytics.weeklyData.map((day, index) => {
+              const isOver = day.calories > targetCalories;
+              const isToday = index === analytics.weeklyData.length - 1;
+              const normalizedHeight = chartMax > 0 ? (day.calories / chartMax) : 0;
+              const barHeight = Math.max(normalizedHeight * CHART_HEIGHT, 4);
+              
+              return (
+                <View key={day.date} style={styles.barContainer}>
+                  <View style={[styles.barWrapper, { height: CHART_HEIGHT }]}>
+                    <LinearGradient
+                      colors={day.calories === 0 
+                        ? [colors.border, colors.border] 
+                        : isOver 
+                          ? ['#EF4444', '#DC2626'] 
+                          : ['#10B981', '#059669']}
+                      style={[
+                        styles.bar,
+                        {
+                          height: barHeight,
+                          opacity: day.calories === 0 ? 0.3 : 1,
+                          borderWidth: isToday ? 2 : 0,
+                          borderColor: colors.purple,
+                        },
+                      ]}
+                    >
+                      {day.calories > 0 && barHeight > 30 && (
+                        <ThemedText style={styles.barInnerValue}>
+                          {day.calories}
+                        </ThemedText>
+                      )}
+                    </LinearGradient>
+                  </View>
+                  <ThemedText style={[styles.barLabel, { 
+                    color: isToday ? colors.purple : colors.subtext,
+                    fontWeight: isToday ? '700' : '500'
+                  }]}>
+                    {getDayLabel(day.date)}
+                  </ThemedText>
+                </View>
+              );
+            })}
+          </View>
+          
+          {/* Target Line with better positioning */}
+          <View style={[styles.targetLineContainer, { 
+            bottom: (targetCalories / chartMax) * CHART_HEIGHT + 40 
+          }]}>
+            <View style={[styles.targetLine, { borderColor: colors.purple }]} />
+            <View style={[styles.targetBadge, { backgroundColor: colors.purple }]}>
+              <ThemedText style={styles.targetBadgeText}>
+                Target {targetCalories}
               </ThemedText>
             </View>
           </View>
         </View>
 
-        <View style={styles.chart}>
-          {analytics.weeklyData.map((day) => {
-            const isOver = day.calories > targetCalories;
-            const barHeight = (day.calories / maxCalories) * 150;
-            
-            return (
-              <View key={day.date} style={styles.barContainer}>
-                <ThemedText style={[styles.barValue, { color: colors.subtext }]}>
-                  {day.calories > 0 ? day.calories : ''}
-                </ThemedText>
-                <View
-                  style={[
-                    styles.bar,
-                    {
-                      height: Math.max(barHeight, 3),
-                      backgroundColor: day.calories === 0 
-                        ? colors.border 
-                        : isOver 
-                          ? colors.danger 
-                          : colors.success,
-                      opacity: day.calories === 0 ? 0.3 : 1,
-                    },
-                  ]}
-                />
-                <ThemedText style={[styles.barLabel, { color: colors.subtext }]}>
-                  {getDayLabel(day.date)}
-                </ThemedText>
-              </View>
-            );
-          })}
-        </View>
-        
-        {/* Target Line */}
-        <View style={styles.targetLineContainer}>
-          <View style={[styles.targetLine, { borderColor: colors.purple }]} />
-          <ThemedText style={[styles.targetLabel, { color: colors.purple }]}>
-            Target: {targetCalories}
-          </ThemedText>
+        {/* Legend at bottom */}
+        <View style={styles.chartLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+            <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
+              On Track
+            </ThemedText>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
+            <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
+              Over Target
+            </ThemedText>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.purple, borderWidth: 2, borderColor: colors.purple }]} />
+            <ThemedText style={[styles.legendText, { color: colors.subtext }]}>
+              Today
+            </ThemedText>
+          </View>
         </View>
       </ThemedView>
 
@@ -370,22 +401,82 @@ export default function AnalyticsScreen() {
         </View>
       </ThemedView>
 
-      {/* Streak Card */}
-      {analytics.streakDays > 0 && (
-        <ThemedView style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-          <View style={styles.streakContainer}>
-            <IconSymbol name="flame.fill" size={56} color={colors.warning} />
-            <View style={styles.streakInfo}>
-              <ThemedText type="title" style={{ color: colors.text, fontSize: 32 }}>
-                {analytics.streakDays} {analytics.streakDays === 1 ? 'Day' : 'Days'}
-              </ThemedText>
-              <ThemedText style={[styles.streakLabel, { color: colors.subtext }]}>
-                Current tracking streak! Keep it up! 🎉
+      {/* Streak Card - LeetCode Style */}
+      <LinearGradient
+        colors={analytics.streakDays > 0 ? ['#F59E0B', '#D97706'] : [colors.card, colors.card]}
+        style={[styles.streakCard, { marginHorizontal: 16, marginVertical: 12 }]}
+      >
+        <View style={styles.streakHeader}>
+          <View style={styles.streakTitleRow}>
+            <IconSymbol name="flame.fill" size={32} color="#FFF" />
+            <View>
+              <ThemedText style={styles.streakTitle}>Daily Streak</ThemedText>
+              <ThemedText style={styles.streakSubtitle}>
+                {analytics.streakDays > 0 
+                  ? "You're on fire! Keep going! 🔥" 
+                  : "Start your journey today!"}
               </ThemedText>
             </View>
           </View>
-        </ThemedView>
-      )}
+          <View style={styles.streakBadge}>
+            <ThemedText style={styles.streakNumber}>{analytics.streakDays}</ThemedText>
+            <ThemedText style={styles.streakDaysText}>days</ThemedText>
+          </View>
+        </View>
+
+        {/* Weekly Grid Visualization */}
+        <View style={styles.streakGrid}>
+          {analytics.weeklyData.slice().reverse().map((day, index) => {
+            const hasData = day.calories > 0;
+            const intensity = hasData ? Math.min((day.calories / targetCalories), 1) : 0;
+            
+            return (
+              <View key={day.date} style={styles.streakGridItem}>
+                <View
+                  style={[
+                    styles.streakBox,
+                    {
+                      backgroundColor: hasData 
+                        ? `rgba(16, 185, 129, ${0.3 + intensity * 0.7})`
+                        : 'rgba(255, 255, 255, 0.2)',
+                      borderWidth: hasData ? 0 : 1,
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                  ]}
+                >
+                  {hasData && <ThemedText style={styles.streakCheckmark}>✓</ThemedText>}
+                </View>
+                <ThemedText style={styles.streakBoxLabel}>
+                  {getDayLabel(day.date).substring(0, 1)}
+                </ThemedText>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Motivational Message */}
+        {analytics.streakDays >= 7 && (
+          <View style={styles.streakAchievement}>
+            <ThemedText style={styles.achievementText}>
+              🎉 Amazing! {analytics.streakDays} days of consistency!
+            </ThemedText>
+          </View>
+        )}
+        {analytics.streakDays >= 30 && (
+          <View style={styles.streakAchievement}>
+            <ThemedText style={styles.achievementText}>
+              🏆 Legendary! You've built a habit!
+            </ThemedText>
+          </View>
+        )}
+        {analytics.streakDays === 0 && (
+          <View style={[styles.streakAchievement, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+            <ThemedText style={styles.achievementText}>
+              💪 Start today and build momentum!
+            </ThemedText>
+          </View>
+        )}
+      </LinearGradient>
     </ScrollView>
   );
 }
@@ -509,9 +600,83 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  legendContainer: {
+  
+  chartWrapper: {
+    position: 'relative',
+    paddingVertical: 16,
+    minHeight: 220,
+  },
+  chart: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  barContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  barWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  bar: {
+    width: '85%',
+    maxWidth: 45,
+    minWidth: 28,
+    borderRadius: 10,
+    minHeight: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  barInnerValue: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  barLabel: {
+    marginTop: 8,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  targetLineContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  targetLine: {
+    flex: 1,
+    borderTopWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  targetBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  targetBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   legendItem: {
     flexDirection: 'row',
@@ -522,51 +687,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 11,
-  },
-  
-  chart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: 180,
-    paddingTop: 10,
-  },
-  barContainer: {
-    alignItems: 'center',
-    width: BAR_WIDTH + 6,
-  },
-  bar: {
-    width: BAR_WIDTH,
-    borderRadius: 8,
-    minHeight: 3,
-  },
-  barValue: {
-    fontSize: 10,
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  barLabel: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  targetLineContainer: {
-    position: 'relative',
-    marginTop: -90,
-    alignItems: 'flex-end',
-  },
-  targetLine: {
-    width: '100%',
-    borderTopWidth: 2,
-    borderStyle: 'dashed',
-  },
-  targetLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
   },
   
   macroContainer: {
@@ -643,16 +763,96 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   
-  streakContainer: {
+  streakCard: {
+    borderRadius: 20,
+    padding: 24,
+    overflow: 'hidden',
+  },
+  streakHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  streakTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-  },
-  streakInfo: {
+    gap: 12,
     flex: 1,
   },
-  streakLabel: {
-    fontSize: 15,
-    marginTop: 4,
+  streakTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
+  streakSubtitle: {
+    color: '#FFF',
+    fontSize: 13,
+    opacity: 0.9,
+    marginTop: 2,
+  },
+  streakBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  streakNumber: {
+    color: '#FFF',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  streakDaysText: {
+    color: '#FFF',
+    fontSize: 11,
+    opacity: 0.9,
+    fontWeight: '600',
+  },
+  streakGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 16,
+  },
+  streakGridItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  streakBox: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  streakCheckmark: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  streakBoxLabel: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600',
+    opacity: 0.8,
+  },
+  streakAchievement: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  achievementText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#64748B',
+  }
 });
