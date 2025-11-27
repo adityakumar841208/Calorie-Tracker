@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 const getApiUrl = () => {
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
+    return 'https://calorie-tracker-qp3i.onrender.com/api';
   }
   return 'http://localhost:3000/api';
 };

@@ -10,10 +10,10 @@ const getApiUrl = () => {
   
   if (Platform.OS === 'android') {
     // For Android Emulator
-    return 'http://10.0.2.2:3000/api';
+    return 'https://calorie-tracker-qp3i.onrender.com/api';
   }
   // For iOS Simulator and Web
-  return 'https://calorie-tracker-qp3i.onrender.com/api';
+  return 'http://localhost:3000/api';
 };
 
 const API_URL = getApiUrl();
