@@ -4,8 +4,8 @@ import * as Font from 'expo-font';
 import { SplashScreen, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
 import 'react-native-reanimated';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -62,19 +62,21 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="sign-in" />
-            <Stack.Screen name="sign-up" />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(onboarding)" />
-            <Stack.Screen name="(app)" options={{ gestureEnabled: false }} />
-            <Stack.Screen name="[...all]" />
-          </Stack>
-          <StatusBar style="auto" />
-        </View>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1 }} onLayout={onLayoutRootView} edges={["top", "bottom"]}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="sign-in" />
+              <Stack.Screen name="sign-up" />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(app)" options={{ gestureEnabled: false }} />
+              <Stack.Screen name="[...all]" />
+            </Stack>
+            <StatusBar style="auto" />
+          </SafeAreaView>
+        </SafeAreaProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

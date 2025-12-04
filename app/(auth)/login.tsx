@@ -4,17 +4,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -225,16 +225,16 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 20,
-    padding: 20,
+    padding: 40,
     maxWidth: 520,
     width: '100%',
     alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 10 },
+    // shadowOpacity: 0.25,
+    // shadowRadius: 20,
     elevation: 10,
-    backdropFilter: 'blur(6px)'
+    // backdropFilter: 'blur(6px)'
   },
   header: { marginBottom: 18 },
   title: { fontSize: 28, marginBottom: 6 },

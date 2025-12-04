@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { connectDB } from './db';
 import dailyLogRoutes from './routes/dailyLogs';
+import reminderRoutes from './routes/reminders';
 import userRoutes from './routes/users';
 
 dotenv.config();
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/daily-logs', dailyLogRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

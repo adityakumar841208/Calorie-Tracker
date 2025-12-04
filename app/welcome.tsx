@@ -154,7 +154,7 @@ export default function WelcomeScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.titleGradient}
               >
-                <Text style={styles.appTitle}>Calorie Tracker</Text>
+                <Text style={styles.appTitle}>FitBites</Text>
               </LinearGradient>
               <Animated.View
                 style={[
